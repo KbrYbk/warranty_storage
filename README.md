@@ -1,16 +1,33 @@
-# warranty_storage
+# Warranty Storage
 
-A new Flutter project.
+Приложение для хранения и управления гарантийными чеками.  
+Позволяет удобно добавлять новые чеки, смотреть истёкшие гарантии и хранить данные локально или в облаке.
 
-## Getting Started
+## Особенности
 
-This project is a starting point for a Flutter application.
+- Авторизация и регистрация пользователей
+- Хранение чеков с датой покупки и названием товара
+- Экран истёкших гарантий
+- Профиль пользователя
+- Настройки (включая разрешение пуш-уведомлений)
+- Современный Material 3 дизайн (Material You)
+- Поддержка светлой и тёмной темы
 
-A few resources to get you started if this is your first Flutter project:
+## Установка и запуск
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
-
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+1. Клонируем репозиторий:
+```bash
+git clone git@github.com:KbrYbk/warranty_storage.git 
+```
+2. Переходим в папку проекта:
+```bash
+cd warranty_storage
+```
+3. Устанавливаем зависимости:
+```bash
+flutter pub get
+```
+4. Запускаем на устройстве или эмуляторе:
+```bash
+flutter run
+```
