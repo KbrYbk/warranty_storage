@@ -62,7 +62,6 @@ class WarrantyApp extends StatelessWidget {
             '/register': (context) => const RegisterScreen(),
             '/home': (context) => const HomeScreen(),
             '/add': (context) => const AddReceiptScreen(),
-            '/details': (context) => const ReceiptDetailsScreen(),
             '/expired': (context) => const ExpiredReceiptsScreen(),
             '/profile': (context) => const ProfileScreen(),
             '/settings': (context) => const SettingsScreen(),

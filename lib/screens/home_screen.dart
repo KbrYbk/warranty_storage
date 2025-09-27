@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:warranty_storage/screens/add_receipt_screen.dart';
+import 'package:warranty_storage/screens/receipt_details_screen.dart';
+
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -84,7 +86,16 @@ class _HomeScreenState extends State<HomeScreen> {
             title: Text(receipt["title"]!),
             subtitle: Text("Дата: ${receipt["date"]}"),
             trailing: const Icon(Icons.chevron_right),
-            onTap: () => Navigator.pushNamed(context, "/details"),
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => ReceiptDetailsScreen(
+                  receipt: receipt,
+
+                ),
+              ),
+            ),
+
           );
         },
       );
