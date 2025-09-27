@@ -9,9 +9,9 @@ class AddReceiptScreen extends StatefulWidget {
 
 class _AddReceiptScreenState extends State<AddReceiptScreen> {
   final _formKey = GlobalKey<FormState>();
-  final TextEditingController _titleController = TextEditingController();
-  final TextEditingController _dateController = TextEditingController();
-  final TextEditingController _commentController = TextEditingController();
+  final _titleController = TextEditingController();
+  final _dateController = TextEditingController();
+  final _commentController = TextEditingController();
 
 //Когда экран уничтожается (пользователь ушёл с него), нужно очистить контроллеры, чтобы не было утечек памяти.
   @override
@@ -83,23 +83,23 @@ class _AddReceiptScreenState extends State<AddReceiptScreen> {
               const SizedBox(height: 16),
 
               // Дата покупки
-              TextFormField(
-                controller: _dateController,
-                readOnly: true, // запрещаем ручной ввод
-                decoration: InputDecoration(
-                  labelText: "Дата покупки",
-                  filled: true,
-                  border: const OutlineInputBorder(),
-                  suffixIcon: IconButton(
-                    icon: const Icon(Icons.calendar_today),
-                    onPressed: _pickDate,
+              GestureDetector(
+                onTap: _pickDate,
+                child: AbsorbPointer(
+                  child: TextFormField(
+                    controller: _dateController,
+                    decoration: const InputDecoration(
+                      labelText: "Дата покупки",
+                      filled: true,
+                      border: OutlineInputBorder(),
+                      suffixIcon: Icon(Icons.calendar_today),
+                    ),
+                    validator: (value) =>
+                    value == null || value.isEmpty ? "Выберите дату" : null,
                   ),
                 ),
-                validator: (value) =>
-                value == null || value.isEmpty ? "Выберите дату" : null,
               ),
               const SizedBox(height: 16),
-
               // Комментарий
               TextFormField(
                 controller: _commentController,

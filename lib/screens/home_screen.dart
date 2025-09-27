@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:warranty_storage/screens/add_receipt_screen.dart';
 import 'package:warranty_storage/screens/receipt_details_screen.dart';
 
-
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -13,98 +12,111 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   int _selectedIndex = 0;
 
-  // Пример чеков
   final List<Map<String, String>> _receipts = [
-    {"title": "Ноутбук Acer", "date": "12.03.2024"},
-    {"title": "Телефон Samsung", "date": "01.05.2024"},
-    {"title": "Наушники Sony", "date": "20.08.2024"},
+    {"title": "Ноутбук Acer", "date": "12.03.2024", "comment": ""},
+    {"title": "Телефон Samsung", "date": "01.05.2024", "comment": ""},
+    {"title": "Наушники Sony", "date": "20.08.2024", "comment": ""},
   ];
 
   void _onItemTapped(int index) => setState(() => _selectedIndex = index);
 
+  Future<void> _addReceipt() async {
+    final Map<String, String>? newReceipt = await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const AddReceiptScreen()),
+    );
+
+    if (newReceipt != null &&
+        newReceipt["title"] != null &&
+        newReceipt["date"] != null) {
+      setState(() => _receipts.add(newReceipt));
+    }
+  }
+
+  Future<void> _openReceiptDetails(Map<String, String> receipt) async {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ReceiptDetailsScreen(receipt: receipt),
+      ),
+    );
+
+    if (result != null && result["delete"] == true) {
+      setState(() => _receipts.remove(receipt));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    Widget body;
+
+    if (_selectedIndex == 0) {
+      body = ListView.builder(
+        itemCount: _receipts.length,
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        itemBuilder: (context, index) {
+          final receipt = _receipts[index];
+          return Card(
+            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            shape:
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            elevation: 4,
+            child: ListTile(
+              leading: CircleAvatar(
+
+                child: const Icon(Icons.receipt_long),
+              ),
+              title: Text(receipt["title"] ?? "Без названия"),
+              subtitle: Text("Дата: ${receipt["date"] ?? "-"}"),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => _openReceiptDetails(receipt),
+            ),
+          );
+        },
+      );
+    } else {
+      String text;
+      if (_selectedIndex == 1) {
+        text = "Истёкшие чеки";
+      } else if (_selectedIndex == 2) {
+        text = "Профиль";
+      } else {
+        text = "Настройки";
+      }
+      body = Center(child: Text(text, style: const TextStyle(fontSize: 18)));
+    }
+
     return Scaffold(
-      appBar: AppBar(
-        title: const Text("Гарантийные чеки"),
-        centerTitle: true,
-      ),
-      body: _buildBody(),
+      appBar: AppBar(title: const Text("Гарантийные чеки"), centerTitle: true),
+      body: body,
       floatingActionButton: _selectedIndex == 0
           ? FloatingActionButton(
-        onPressed: () async {
-          final newReceipt = await Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => AddReceiptScreen()),
-          );
-
-          if (newReceipt != null) {
-            setState(() => _receipts.add(newReceipt));
-          }
-        },
+        onPressed: _addReceipt,
         child: const Icon(Icons.add),
       )
           : null,
-
       bottomNavigationBar: NavigationBar(
         selectedIndex: _selectedIndex,
         onDestinationSelected: _onItemTapped,
         destinations: const [
           NavigationDestination(
-            icon: Icon(Icons.receipt_outlined),
-            selectedIcon: Icon(Icons.receipt),
-            label: "Чеки",
-          ),
+              icon: Icon(Icons.receipt_outlined),
+              selectedIcon: Icon(Icons.receipt),
+              label: "Чеки"),
           NavigationDestination(
-            icon: Icon(Icons.history_outlined),
-            selectedIcon: Icon(Icons.history),
-            label: "Истёкшие",
-          ),
+              icon: Icon(Icons.history_outlined),
+              selectedIcon: Icon(Icons.history),
+              label: "Истёкшие"),
           NavigationDestination(
-            icon: Icon(Icons.person_outline),
-            selectedIcon: Icon(Icons.person),
-            label: "Профиль",
-          ),
+              icon: Icon(Icons.person_outline),
+              selectedIcon: Icon(Icons.person),
+              label: "Профиль"),
           NavigationDestination(
-            icon: Icon(Icons.settings_outlined),
-            selectedIcon: Icon(Icons.settings),
-            label: "Настройки",
-          ),
+              icon: Icon(Icons.settings_outlined),
+              selectedIcon: Icon(Icons.settings),
+              label: "Настройки"),
         ],
       ),
     );
-  }
-
-  Widget _buildBody() {
-    if (_selectedIndex == 0) {
-      return ListView.builder(
-        itemCount: _receipts.length,
-        itemBuilder: (context, index) {
-          final receipt = _receipts[index];
-          return ListTile(
-            leading: const Icon(Icons.receipt_long),
-            title: Text(receipt["title"]!),
-            subtitle: Text("Дата: ${receipt["date"]}"),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => ReceiptDetailsScreen(
-                  receipt: receipt,
-
-                ),
-              ),
-            ),
-
-          );
-        },
-      );
-    } else if (_selectedIndex == 1) {
-      return const Center(child: Text("Истёкшие чеки"));
-    } else if (_selectedIndex == 2) {
-      return const Center(child: Text("Профиль"));
-    } else {
-      return const Center(child: Text("Настройки"));
-    }
   }
 }
