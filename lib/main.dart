@@ -121,7 +121,7 @@ class _WarrantyAppState extends State<WarrantyApp> {
             '/register': (context) => const RegisterScreen(),
             '/home': (context) => HomeScreen(onThemeChanged: _changeTheme),
             '/add': (context) => const AddReceiptScreen(),
-            '/expired': (context) => const ExpiredReceiptsScreen(),
+            '/expired': (context) => ExpiredReceiptsScreen(receipts: []),
             '/profile': (context) => const ProfileScreen(),
             '/settings': (_) => SettingsScreen(
               onThemeChanged: _changeTheme,

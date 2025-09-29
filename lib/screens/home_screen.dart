@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:warranty_storage/screens/add_receipt_screen.dart';
 import 'package:warranty_storage/screens/receipt_details_screen.dart';
+import 'package:warranty_storage/screens/expired_receipts_screen.dart';
 import 'package:warranty_storage/screens/settings_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -81,13 +82,11 @@ class _HomeScreenState extends State<HomeScreen> {
         onNotificationsChanged: (val) =>
             setState(() => _notificationsEnabled = val),
       );
-    } else {
-      String text;
-      if (_selectedIndex == 1) {
-        text = "Истёкшие чеки";
+      } else if (_selectedIndex == 1) {
+        body = ExpiredReceiptsScreen(receipts: _receipts);
       } else {
-        text = "Профиль";
-      }
+      String text;
+      text = "Профиль";
       body = Center(child: Text(text, style: const TextStyle(fontSize: 18)));
     }
 
