@@ -3,6 +3,7 @@ import 'package:warranty_storage/screens/add_receipt_screen.dart';
 import 'package:warranty_storage/screens/receipt_details_screen.dart';
 import 'package:warranty_storage/screens/expired_receipts_screen.dart';
 import 'package:warranty_storage/screens/settings_screen.dart';
+import 'package:warranty_storage/screens/profile_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   final void Function(ThemeMode) onThemeChanged;
@@ -120,7 +121,7 @@ class _HomeScreenState extends State<HomeScreen> {
         },
       ),
       1: ExpiredReceiptsScreen(receipts: _receipts),
-      2: const Center(child: Text("Профиль", style: TextStyle(fontSize: 18))),
+      2: ProfileScreen(),
       3: SettingsScreen(
         onThemeChanged: widget.onThemeChanged,
         notificationsEnabled: _notificationsEnabled,
