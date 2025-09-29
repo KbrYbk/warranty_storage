@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 
 class ReceiptDetailsScreen extends StatelessWidget {
@@ -5,103 +6,87 @@ class ReceiptDetailsScreen extends StatelessWidget {
 
   const ReceiptDetailsScreen({super.key, required this.receipt});
 
+  void _deleteReceipt(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text("Удалить чек?"),
+        content: const Text("Вы уверены, что хотите удалить этот чек?"),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text("Отмена")),
+          FilledButton.tonalIcon(
+            icon: const Icon(Icons.delete),
+            label: const Text("Удалить"),
+            onPressed: () {
+              Navigator.pop(ctx); // закрыть диалог
+              Navigator.pop(context, {"delete": true});
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildField(String label, String? value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            "$label: ",
+            style: const TextStyle(fontWeight: FontWeight.bold),
+          ),
+          Expanded(
+            child: Text(value ?? "-"),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-
     return Scaffold(
       appBar: AppBar(
         title: const Text("Детали чека"),
         centerTitle: true,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.delete_outline),
+            onPressed: () => _deleteReceipt(context),
+          ),
+        ],
       ),
-      body: Padding(
+      body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Верх: иконка, название и тег
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                Icon(Icons.receipt_long, size: 40, color: colorScheme.primary),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    receipt["title"] ?? "",
-                    style: const TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
+            if (receipt["image"] != null && receipt["image"]!.isNotEmpty)
+              Center(
+                child: Image.file(
+                  File(receipt["image"]!),
+                  height: 200,
+                  fit: BoxFit.contain,
                 ),
-                Chip(
-                  label: Text("Покупка"),
-                  backgroundColor: colorScheme.primaryContainer,
-                ),
-              ],
-            ),
-            const SizedBox(height: 24),
-
-            // Дата
-            Row(
-              children: [
-                const Icon(Icons.calendar_today_outlined),
-                const SizedBox(width: 8),
-                Text(
-                  "Дата: ${receipt["date"] ?? ""}",
-                  style: const TextStyle(fontSize: 16),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-
-            // Комментарий
-            if ((receipt["comment"] ?? "").isNotEmpty)
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    "Комментарий",
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    receipt["comment"]!,
-                    style: const TextStyle(fontSize: 16),
-                  ),
-                ],
               ),
-
-            const Spacer(),
-
-            // Кнопка удаления
-            SizedBox(
-              width: double.infinity,
-              child: FilledButton.tonal(
-                onPressed: () {
-                  showDialog(
-                    context: context,
-                    builder: (ctx) => AlertDialog(
-                      title: const Text("Удалить чек?"),
-                      content: const Text(
-                          "Вы уверены, что хотите удалить этот чек?"),
-                      actions: [
-                        TextButton(
-                          onPressed: () => Navigator.pop(ctx),
-                          child: const Text("Отмена"),
-                        ),
-                        FilledButton.tonal(
-                          onPressed: () {
-                            Navigator.pop(ctx); // закрыть диалог
-                            Navigator.pop(context, {"delete": true});
-                          },
-                          child: const Text("Удалить"),
-                        ),
-                      ],
-                    ),
-                  );
-                },
-                child: const Text("Удалить чек"),
+            const SizedBox(height: 16),
+            _buildField("Название", receipt["title"]),
+            _buildField("Дата покупки", receipt["date"]),
+            _buildField("Гарантия до", receipt["warrantyEnd"]),
+            _buildField("Сумма", receipt["price"]),
+            _buildField("Магазин", receipt["store"]),
+            _buildField("Категория", receipt["category"]),
+            _buildField("Комментарий", receipt["comment"]),
+            const SizedBox(height: 24),
+            Center(
+              child: FilledButton.tonalIcon(
+                icon: const Icon(Icons.delete),
+                label: const Text("Удалить чек"),
+                onPressed: () => _deleteReceipt(context),
               ),
             ),
           ],
