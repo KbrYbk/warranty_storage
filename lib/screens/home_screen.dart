@@ -13,27 +13,66 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
+// Виджет для вывода даты покупки и окончания гарантии
+class ReceiptSubtitle extends StatelessWidget {
+  final Map<String, String> receipt;
+
+  const ReceiptSubtitle({super.key, required this.receipt});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text("Дата покупки: ${receipt["date"] ?? "-"}"),
+        Text("Гарантия до: ${receipt["warrantyEnd"] ?? "-"}"),
+      ],
+    );
+  }
+}
+
 class _HomeScreenState extends State<HomeScreen> {
   int _selectedIndex = 0;
   bool _notificationsEnabled = true;
+
   final List<Map<String, String>> _receipts = [
-    {"title": "Ноутбук Acer", "date": "12.03.2024", "comment": ""},
-    {"title": "Телефон Samsung", "date": "01.05.2024", "comment": ""},
-    {"title": "Наушники Sony", "date": "20.08.2024", "comment": ""},
+    {
+      "title": "Ноутбук Acer",
+      "date": "12.03.2024",
+      "warrantyEnd": "12.03.2025",
+      "comment": "",
+    },
+    {
+      "title": "Телефон Samsung",
+      "date": "01.05.2024",
+      "warrantyEnd": "01.09.2025",
+      "comment": "",
+    },
+    {
+      "title": "Наушники Sony",
+      "date": "01.12.2024",
+      "warrantyEnd": "01.12.2025",
+      "comment": "",
+    },
   ];
 
   void _onItemTapped(int index) => setState(() => _selectedIndex = index);
 
+  bool _isValidReceipt(Map<String, String>? receipt) {
+    return receipt != null &&
+        receipt["title"]?.isNotEmpty == true &&
+        receipt["date"]?.isNotEmpty == true;
+  }
+
   Future<void> _addReceipt() async {
-    final Map<String, String>? newReceipt = await Navigator.push(
+    final newReceipt = await Navigator.push<Map<String, String>?>(
       context,
       MaterialPageRoute(builder: (_) => const AddReceiptScreen()),
     );
 
-    if (newReceipt != null &&
-        newReceipt["title"] != null &&
-        newReceipt["date"] != null) {
-      setState(() => _receipts.add(newReceipt));
+    if (_isValidReceipt(newReceipt)) {
+      setState(() => _receipts.add(newReceipt!));
     }
   }
 
@@ -48,11 +87,49 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  Widget? _buildFloatingButton() {
+    if (_selectedIndex != 0) return null;
+    return FloatingActionButton(
+      onPressed: _addReceipt,
+      child: const Icon(Icons.add),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    Widget body;
+    final pages = {
+      0: ListView.builder(
+        itemCount: _receipts.length,
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        itemBuilder: (context, index) {
+          final receipt = _receipts[index];
+          return Card(
+            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            elevation: 4,
+            child: ListTile(
+              leading: const CircleAvatar(child: Icon(Icons.receipt_long)),
+              title: Text(receipt["title"] ?? "Без названия"),
+              subtitle: ReceiptSubtitle(receipt: receipt),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => _openReceiptDetails(receipt),
+            ),
+          );
+        },
+      ),
+      1: ExpiredReceiptsScreen(receipts: _receipts),
+      2: const Center(child: Text("Профиль", style: TextStyle(fontSize: 18))),
+      3: SettingsScreen(
+        onThemeChanged: widget.onThemeChanged,
+        notificationsEnabled: _notificationsEnabled,
+        onNotificationsChanged: (val) =>
+            setState(() => _notificationsEnabled = val),
+      ),
+    };
 
-    if (_selectedIndex == 0) {
+    /* if (_selectedIndex == 0) {
       body = ListView.builder(
         itemCount: _receipts.length,
         padding: const EdgeInsets.symmetric(vertical: 8),
@@ -67,7 +144,13 @@ class _HomeScreenState extends State<HomeScreen> {
             child: ListTile(
               leading: CircleAvatar(child: const Icon(Icons.receipt_long)),
               title: Text(receipt["title"] ?? "Без названия"),
-              subtitle: Text("Дата: ${receipt["date"] ?? "-"}"),
+              subtitle: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text("Дата покупки: ${receipt["date"] ?? "-"}"),
+                  Text("Гарантия до: ${receipt["warrantyEnd"] ?? "-"}"),
+                ],
+              ),
               trailing: const Icon(Icons.chevron_right),
               onTap: () => _openReceiptDetails(receipt),
             ),
@@ -88,17 +171,12 @@ class _HomeScreenState extends State<HomeScreen> {
       String text;
       text = "Профиль";
       body = Center(child: Text(text, style: const TextStyle(fontSize: 18)));
-    }
+    }*/
 
     return Scaffold(
       appBar: AppBar(title: const Text("Гарантийные чеки"), centerTitle: true),
-      body: body,
-      floatingActionButton: _selectedIndex == 0
-          ? FloatingActionButton(
-              onPressed: _addReceipt,
-              child: const Icon(Icons.add),
-            )
-          : null,
+      body: pages[_selectedIndex]!,
+      floatingActionButton: _buildFloatingButton(),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _selectedIndex,
         onDestinationSelected: _onItemTapped,

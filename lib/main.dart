@@ -5,7 +5,7 @@ import 'screens/login_screen.dart';
 import 'screens/register_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/add_receipt_screen.dart';
-import 'screens/receipt_details_screen.dart';
+//import 'screens/receipt_details_screen.dart';
 import 'screens/expired_receipts_screen.dart';
 import 'screens/profile_screen.dart';
 import 'screens/settings_screen.dart';
