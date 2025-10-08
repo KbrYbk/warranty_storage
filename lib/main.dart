@@ -9,8 +9,24 @@ import 'screens/add_receipt_screen.dart';
 import 'screens/expired_receipts_screen.dart';
 import 'screens/profile_screen.dart';
 import 'screens/settings_screen.dart';
+import 'package:hive_flutter/hive_flutter.dart';
+import 'models/receipt.dart';
 
-void main() => runApp(const WarrantyApp());
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized(); // нужно для async-кода в main
+
+  // Инициализация Hive
+  await Hive.initFlutter();
+
+  // Регистрируем адаптер
+  Hive.registerAdapter(ReceiptAdapter());
+
+  // Открываем коробку (хранилище чеков)
+  await Hive.openBox<Receipt>('receipts');
+
+  // Запускаем приложение
+  runApp(const WarrantyApp());
+}
 
 // Сохраняем тему
 Future<void> saveTheme(ThemeMode themeMode) async {

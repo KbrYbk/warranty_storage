@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:hive_flutter/hive_flutter.dart';
+import 'package:warranty_storage/models/receipt.dart';
 import 'package:warranty_storage/screens/add_receipt_screen.dart';
-import 'package:warranty_storage/screens/receipt_details_screen.dart';
 import 'package:warranty_storage/screens/expired_receipts_screen.dart';
-import 'package:warranty_storage/screens/settings_screen.dart';
 import 'package:warranty_storage/screens/profile_screen.dart';
+import 'package:warranty_storage/screens/receipt_details_screen.dart';
+import 'package:warranty_storage/screens/settings_screen.dart';
+import 'package:intl/intl.dart';
 
 class HomeScreen extends StatefulWidget {
   final void Function(ThemeMode) onThemeChanged;
@@ -16,7 +19,7 @@ class HomeScreen extends StatefulWidget {
 
 // Виджет для вывода даты покупки и окончания гарантии
 class ReceiptSubtitle extends StatelessWidget {
-  final Map<String, String> receipt;
+  final Receipt receipt;
 
   const ReceiptSubtitle({super.key, required this.receipt});
 
@@ -26,8 +29,8 @@ class ReceiptSubtitle extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text("Дата покупки: ${receipt["date"] ?? "-"}"),
-        Text("Гарантия до: ${receipt["warrantyEnd"] ?? "-"}"),
+        Text("Дата покупки: ${receipt.date}"),
+        Text("Гарантия до: ${receipt.warrantyEnd}"),
       ],
     );
   }
@@ -37,173 +40,135 @@ class _HomeScreenState extends State<HomeScreen> {
   int _selectedIndex = 0;
   bool _notificationsEnabled = true;
 
-  final List<Map<String, String>> _receipts = [
-    {
-      "title": "Ноутбук Acer",
-      "date": "12.03.2024",
-      "warrantyEnd": "12.03.2025",
-      "comment": "",
-    },
-    {
-      "title": "Телефон Samsung",
-      "date": "01.05.2024",
-      "warrantyEnd": "01.09.2025",
-      "comment": "",
-    },
-    {
-      "title": "Наушники Sony",
-      "date": "01.12.2024",
-      "warrantyEnd": "01.12.2025",
-      "comment": "",
-    },
-  ];
+  late Box<Receipt> _receiptBox; // Hive Box для хранения чеков
+
+  @override
+  void initState() {
+    super.initState();
+    _receiptBox = Hive.box<Receipt>('receipts');
+  }
 
   void _onItemTapped(int index) => setState(() => _selectedIndex = index);
 
-  bool _isValidReceipt(Map<String, String>? receipt) {
-    return receipt != null &&
-        receipt["title"]?.isNotEmpty == true &&
-        receipt["date"]?.isNotEmpty == true;
-  }
+  // Добавление нового чека
 
   Future<void> _addReceipt() async {
-    final newReceipt = await Navigator.push<Map<String, String>?>(
+    final newReceipt = await Navigator.push<Receipt?>(
       context,
       MaterialPageRoute(builder: (_) => const AddReceiptScreen()),
     );
 
-    if (_isValidReceipt(newReceipt)) {
-      setState(() => _receipts.add(newReceipt!));
+    if (newReceipt != null) {
+      await _receiptBox.add(newReceipt);
     }
   }
 
-  Future<void> _openReceiptDetails(Map<String, String> receipt) async {
+//Открытие деталей чека
+  Future<void> _openReceiptDetails(Receipt receipt) async {
     final result = await Navigator.push(
       context,
-      MaterialPageRoute(builder: (_) => ReceiptDetailsScreen(receipt: receipt)),
+      MaterialPageRoute(
+        builder: (_) => ReceiptDetailsScreen(receipt: receipt), // передаём объект Receipt
+      ),
     );
 
     if (result != null && result["delete"] == true) {
-      setState(() => _receipts.remove(receipt));
+      setState(() {}); // обновляем экран, объект уже удалён
     }
   }
-
-  Widget? _buildFloatingButton() {
-    if (_selectedIndex != 0) return null;
-    return FloatingActionButton(
-      onPressed: _addReceipt,
-      child: const Icon(Icons.add),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final pages = {
-      0: ListView.builder(
-        itemCount: _receipts.length,
-        padding: const EdgeInsets.symmetric(vertical: 8),
-        itemBuilder: (context, index) {
-          final receipt = _receipts[index];
-          return Card(
-            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-            ),
-            elevation: 4,
-            child: ListTile(
-              leading: const CircleAvatar(child: Icon(Icons.receipt_long)),
-              title: Text(receipt["title"] ?? "Без названия"),
-              subtitle: ReceiptSubtitle(receipt: receipt),
-              trailing: const Icon(Icons.chevron_right),
-              onTap: () => _openReceiptDetails(receipt),
-            ),
-          );
-        },
-      ),
-      1: ExpiredReceiptsScreen(receipts: _receipts),
-      2: ProfileScreen(),
-      3: SettingsScreen(
-        onThemeChanged: widget.onThemeChanged,
-        notificationsEnabled: _notificationsEnabled,
-        onNotificationsChanged: (val) =>
-            setState(() => _notificationsEnabled = val),
-      ),
-    };
-
-    /* if (_selectedIndex == 0) {
-      body = ListView.builder(
-        itemCount: _receipts.length,
-        padding: const EdgeInsets.symmetric(vertical: 8),
-        itemBuilder: (context, index) {
-          final receipt = _receipts[index];
-          return Card(
-            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-            ),
-            elevation: 4,
-            child: ListTile(
-              leading: CircleAvatar(child: const Icon(Icons.receipt_long)),
-              title: Text(receipt["title"] ?? "Без названия"),
-              subtitle: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text("Дата покупки: ${receipt["date"] ?? "-"}"),
-                  Text("Гарантия до: ${receipt["warrantyEnd"] ?? "-"}"),
-                ],
-              ),
-              trailing: const Icon(Icons.chevron_right),
-              onTap: () => _openReceiptDetails(receipt),
-            ),
-          );
-        },
-      );
-    } else if (_selectedIndex == 3) {
-      // Настройки
-      body = SettingsScreen(
-        onThemeChanged: widget.onThemeChanged,
-        notificationsEnabled: _notificationsEnabled,
-        onNotificationsChanged: (val) =>
-            setState(() => _notificationsEnabled = val),
-      );
-      } else if (_selectedIndex == 1) {
-        body = ExpiredReceiptsScreen(receipts: _receipts);
-      } else {
-      String text;
-      text = "Профиль";
-      body = Center(child: Text(text, style: const TextStyle(fontSize: 18)));
-    }*/
-
-    return Scaffold(
-      appBar: AppBar(title: const Text("Гарантийные чеки"), centerTitle: true),
-      body: pages[_selectedIndex]!,
-      floatingActionButton: _buildFloatingButton(),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _selectedIndex,
-        onDestinationSelected: _onItemTapped,
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.receipt_outlined),
-            selectedIcon: Icon(Icons.receipt),
-            label: "Чеки",
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.history_outlined),
-            selectedIcon: Icon(Icons.history),
-            label: "Истёкшие",
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.person_outline),
-            selectedIcon: Icon(Icons.person),
-            label: "Профиль",
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.settings_outlined),
-            selectedIcon: Icon(Icons.settings),
-            label: "Настройки",
-          ),
-        ],
-      ),
-    );
-  }
+//кнопка
+Widget? _buildFloatingButton() {
+  if (_selectedIndex != 0) return null;
+  return FloatingActionButton(
+    onPressed: _addReceipt,
+    child: const Icon(Icons.add),
+  );
 }
+
+@override
+Widget build(BuildContext context) {
+  final pages = {
+    //вкладка чеки
+    0: ValueListenableBuilder(
+      valueListenable: _receiptBox.listenable(),
+      builder: (context, Box<Receipt> box, _) {
+        if (box.isEmpty) {
+          return const Center(child: Text("Пока нет сохранённых чеков"));
+        }
+
+        final receipts = box.values.toList();
+
+        return ListView.builder(
+          itemCount: receipts.length,
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          itemBuilder: (context, index) {
+            final receipt = receipts[index];
+            return Card(
+              margin:
+              const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              elevation: 4,
+              child: ListTile(
+                leading: const CircleAvatar(child: Icon(Icons.receipt_long)),
+                title: Text(receipt.title),
+                subtitle: ReceiptSubtitle(receipt: receipt),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => _openReceiptDetails(receipt),
+              ),
+            );
+          },
+        );
+      },
+    ),
+    1: ValueListenableBuilder(//истёшие чеки
+      valueListenable: _receiptBox.listenable(),
+      builder: (context, Box<Receipt> box, _) {
+        final expired = _receiptBox.values
+            .where((r) => r.warrantyEnd.isBefore(DateTime.now()))
+            .toList();
+        return ExpiredReceiptsScreen(receipts: expired); // <- передаем сразу List<Receipt>
+      },
+    ),
+    2: const ProfileScreen(),//профиль, заглушка
+    3: SettingsScreen(//настройки
+      onThemeChanged: widget.onThemeChanged,
+      notificationsEnabled: _notificationsEnabled,
+      onNotificationsChanged: (val) =>
+          setState(() => _notificationsEnabled = val),
+    ),
+  };
+
+  return Scaffold(
+    appBar: AppBar(title: const Text("Гарантийные чеки"), centerTitle: true),
+    body: pages[_selectedIndex]!,
+    floatingActionButton: _buildFloatingButton(),
+    bottomNavigationBar: NavigationBar(
+      selectedIndex: _selectedIndex,
+      onDestinationSelected: _onItemTapped,
+      destinations: const [
+        NavigationDestination(
+          icon: Icon(Icons.receipt_outlined),
+          selectedIcon: Icon(Icons.receipt),
+          label: "Чеки",
+        ),
+        NavigationDestination(
+          icon: Icon(Icons.history_outlined),
+          selectedIcon: Icon(Icons.history),
+          label: "Истёкшие",
+        ),
+        NavigationDestination(
+          icon: Icon(Icons.person_outline),
+          selectedIcon: Icon(Icons.person),
+          label: "Профиль",
+        ),
+        NavigationDestination(
+          icon: Icon(Icons.settings_outlined),
+          selectedIcon: Icon(Icons.settings),
+          label: "Настройки",
+        ),
+      ],
+    ),
+  );
+}}

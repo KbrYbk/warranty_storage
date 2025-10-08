@@ -1,8 +1,10 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import '../models/receipt.dart';
+import 'package:intl/intl.dart';
 
 class ReceiptDetailsScreen extends StatelessWidget {
-  final Map<String, String> receipt;
+  final Receipt receipt; // теперь принимаем объект Receipt
 
   const ReceiptDetailsScreen({super.key, required this.receipt});
 
@@ -14,14 +16,16 @@ class ReceiptDetailsScreen extends StatelessWidget {
         content: const Text("Вы уверены, что хотите удалить этот чек?"),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text("Отмена")),
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text("Отмена"),
+          ),
           FilledButton.tonalIcon(
             icon: const Icon(Icons.delete),
             label: const Text("Удалить"),
-            onPressed: () {
+            onPressed: () async {
+              await receipt.delete(); // удаляем чек из Hive
               Navigator.pop(ctx); // закрыть диалог
-              Navigator.pop(context, {"delete": true});
+              Navigator.pop(context); // закрыть экран деталей
             },
           ),
         ],
@@ -35,13 +39,8 @@ class ReceiptDetailsScreen extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            "$label: ",
-            style: const TextStyle(fontWeight: FontWeight.bold),
-          ),
-          Expanded(
-            child: Text(value ?? "-"),
-          ),
+          Text("$label: ", style: const TextStyle(fontWeight: FontWeight.bold)),
+          Expanded(child: Text(value ?? "-")),
         ],
       ),
     );
@@ -65,22 +64,22 @@ class ReceiptDetailsScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            if (receipt["image"] != null && receipt["image"]!.isNotEmpty)
+            if (receipt.imagePath.isNotEmpty)
               Center(
                 child: Image.file(
-                  File(receipt["image"]!),
+                  File(receipt.imagePath),
                   height: 200,
                   fit: BoxFit.contain,
                 ),
               ),
             const SizedBox(height: 16),
-            _buildField("Название", receipt["title"]),
-            _buildField("Дата покупки", receipt["date"]),
-            _buildField("Гарантия до", receipt["warrantyEnd"]),
-            _buildField("Сумма", receipt["price"]),
-            _buildField("Магазин", receipt["store"]),
-            _buildField("Категория", receipt["category"]),
-            _buildField("Комментарий", receipt["comment"]),
+            _buildField("Название", receipt.title),
+            _buildField("Дата покупки", DateFormat('dd.MM.yyyy').format(receipt.date)),
+            _buildField("Гарантия до", DateFormat('dd.MM.yyyy').format(receipt.warrantyEnd)),
+            _buildField("Сумма", receipt.price),
+            _buildField("Магазин", receipt.store),
+            _buildField("Категория", receipt.category),
+            _buildField("Комментарий", receipt.comment),
             const SizedBox(height: 24),
             Center(
               child: FilledButton.tonalIcon(
