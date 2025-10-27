@@ -1,92 +1,69 @@
 import 'package:flutter/material.dart';
 import 'package:dynamic_color/dynamic_color.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:hive_flutter/hive_flutter.dart';
+import 'models/receipt.dart';
+import 'services/theme_service.dart';
+
+// Экраны
 import 'screens/login_screen.dart';
 import 'screens/register_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/add_receipt_screen.dart';
-//import 'screens/receipt_details_screen.dart';
 import 'screens/expired_receipts_screen.dart';
 import 'screens/profile_screen.dart';
 import 'screens/settings_screen.dart';
-import 'package:hive_flutter/hive_flutter.dart';
-import 'models/receipt.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized(); // нужно для async-кода в main
-
   // Инициализация Hive
   await Hive.initFlutter();
-
-  // Регистрируем адаптер
   Hive.registerAdapter(ReceiptAdapter());
-
-  // Открываем коробку (хранилище чеков)
-  await Hive.openBox<Receipt>('receipts');
-
+  await Hive.openBox<Receipt>(
+    'receipts',
+  ); // Открываем коробку (хранилище чеков)
+  // Инициализируем ThemeService и загружаем сохранённую тему
+  final themeService = ThemeService();
+  await themeService.load();
   // Запускаем приложение
-  runApp(const WarrantyApp());
-}
-
-// Сохраняем тему
-Future<void> saveTheme(ThemeMode themeMode) async {
-  final prefs = await SharedPreferences.getInstance();
-  await prefs.setInt('themeMode', themeMode.index);
-}
-
-// Загружаем тему
-Future<ThemeMode> loadTheme() async {
-  final prefs = await SharedPreferences.getInstance();
-  final index = prefs.getInt('themeMode') ?? ThemeMode.system.index;
-  return ThemeMode.values[index];
-}
-
-// Сохраняем уведомления
-Future<void> saveNotifications(bool enabled) async {
-  final prefs = await SharedPreferences.getInstance();
-  await prefs.setBool('notifications', enabled);
-}
-
-// Загружаем уведомления
-Future<bool> loadNotifications() async {
-  final prefs = await SharedPreferences.getInstance();
-  return prefs.getBool('notifications') ?? true;
+  runApp(WarrantyApp(themeService: themeService));
 }
 
 class WarrantyApp extends StatefulWidget {
-  const WarrantyApp({super.key});
+  final ThemeService themeService;
+
+  const WarrantyApp({super.key, required this.themeService});
 
   @override
   State<WarrantyApp> createState() => _WarrantyAppState();
 }
 
 class _WarrantyAppState extends State<WarrantyApp> {
-  ThemeMode _themeMode = ThemeMode.system;
   bool _notificationsEnabled = true;
-
   @override
   void initState() {
     super.initState();
     _loadSettings();
   }
 
-  void _loadSettings() async {
-    final theme = await loadTheme();
-    final notifications = await loadNotifications();
+ /* Future<void> _loadSettings() async {
+    final prefs = await SharedPreferences.getInstance();
+    final notifications = prefs.getBool('notifications') ?? true;
+    setState(() => _notificationsEnabled = notifications);
+  }*/
+// Загружаем настройку уведомлений
+  Future<void> _loadSettings() async {
+    final prefs = await SharedPreferences.getInstance();
     setState(() {
-      _themeMode = theme;
-      _notificationsEnabled = notifications;
+      _notificationsEnabled = prefs.getBool('notifications') ?? true;
     });
   }
 
-  void _changeTheme(ThemeMode mode) {
-    setState(() => _themeMode = mode);
-    saveTheme(mode);
-  }
-
-  void _toggleNotifications(bool enabled) {
+  // Сохраняем настройку уведомлений
+  Future<void> _toggleNotifications(bool enabled) async {
     setState(() => _notificationsEnabled = enabled);
-    saveNotifications(enabled);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('notifications', enabled);
   }
 
   @override
@@ -95,55 +72,45 @@ class _WarrantyAppState extends State<WarrantyApp> {
       builder: (ColorScheme? lightDynamic, ColorScheme? darkDynamic) {
         // Если есть системные цвета (Android 12+) → используем
         // Иначе → seedColor (fallback для старых Android)
-        final ColorScheme lightScheme =
+        final lightScheme =
             lightDynamic ?? ColorScheme.fromSeed(seedColor: Colors.red);
-        final ColorScheme darkScheme =
+        final darkScheme =
             darkDynamic ??
             ColorScheme.fromSeed(
               seedColor: Colors.red,
               brightness: Brightness.dark,
             );
-
-        return MaterialApp(
-          debugShowCheckedModeBanner: false,
-          title: 'Гарантийные чеки',
-          theme: ThemeData(
-            colorScheme: lightScheme,
-            useMaterial3: true,
-            appBarTheme: AppBarTheme(
-              centerTitle: true,
-              scrolledUnderElevation: 0,
-              backgroundColor: lightScheme.surface, // <-- фон для AppBar
-              foregroundColor: lightScheme.onSurface, // <-- текст/иконки
-              // elevation: 1,                                  // лёгкая "подложка"
-            ),
-          ),
-          darkTheme: ThemeData(
-            colorScheme: darkScheme,
-            useMaterial3: true,
-            appBarTheme: AppBarTheme(
-              centerTitle: true,
-              scrolledUnderElevation: 0,
-              backgroundColor: darkScheme.surface,
-              foregroundColor: darkScheme.onSurface,
-              //elevation: 1,                                  // лёгкая "подложка"
-            ),
-          ),
-          // themeMode: ThemeMode.system, // переключение по системной теме
-          themeMode: _themeMode,
-          initialRoute: '/home',
-          routes: {
-            '/login': (context) => const LoginScreen(),
-            '/register': (context) => const RegisterScreen(),
-            '/home': (context) => HomeScreen(onThemeChanged: _changeTheme),
-            '/add': (context) => const AddReceiptScreen(),
-            '/expired': (context) => ExpiredReceiptsScreen(receipts: []),
-            '/profile': (context) => const ProfileScreen(),
-            '/settings': (_) => SettingsScreen(
-              onThemeChanged: _changeTheme,
-              notificationsEnabled: _notificationsEnabled,
-              onNotificationsChanged: _toggleNotifications,
-            ),
+        // Подписываемся на ValueNotifier — MaterialApp будет менять themeMode автоматически
+        return ValueListenableBuilder<ThemeMode>(
+          valueListenable: widget.themeService.themeMode,
+          builder: (context, currentMode, _) {
+            return MaterialApp(
+              debugShowCheckedModeBanner: false,
+              title: 'Гарантийные чеки',
+              theme: ThemeData(colorScheme: lightScheme, useMaterial3: true),
+              darkTheme: ThemeData(colorScheme: darkScheme, useMaterial3: true),
+              themeMode: currentMode,
+              initialRoute: '/home',
+              routes: {
+                '/login': (context) => const LoginScreen(),
+                '/register': (context) => const RegisterScreen(),
+                '/home': (context) => HomeScreen(themeService: widget.themeService),
+                '/add': (context) => const AddReceiptScreen(),
+                '/expired': (context) {
+                  final box = Hive.box<Receipt>('receipts');
+                  final allReceipts = box.values.toList();
+                  return ExpiredReceiptsScreen(receipts: allReceipts);
+                },
+                '/profile': (context) => const ProfileScreen(),
+                '/settings': (ctx) => SettingsScreen(
+                  // теперь передаём сам сервис, чтобы экран всегда видел актуальную тему
+                  themeService: widget.themeService,
+                  // другие параметры (уведомления и т.д.) — оставь свои
+                  notificationsEnabled: _notificationsEnabled,
+                  onNotificationsChanged: _toggleNotifications,
+                ),
+              },
+            );
           },
         );
       },

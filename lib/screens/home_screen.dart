@@ -6,12 +6,14 @@ import 'package:warranty_storage/screens/expired_receipts_screen.dart';
 import 'package:warranty_storage/screens/profile_screen.dart';
 import 'package:warranty_storage/screens/receipt_details_screen.dart';
 import 'package:warranty_storage/screens/settings_screen.dart';
+import '../services/theme_service.dart';
+import 'services/theme_service.dart';
 import 'package:intl/intl.dart';
 
 class HomeScreen extends StatefulWidget {
-  final void Function(ThemeMode) onThemeChanged;
+  final ThemeService themeService;
 
-  const HomeScreen({super.key, required this.onThemeChanged});
+  const HomeScreen({super.key, required this.themeService});
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -39,7 +41,6 @@ class ReceiptSubtitle extends StatelessWidget {
 class _HomeScreenState extends State<HomeScreen> {
   int _selectedIndex = 0;
   bool _notificationsEnabled = true;
-
   late Box<Receipt> _receiptBox; // Hive Box для хранения чеков
 
   @override
@@ -133,7 +134,7 @@ Widget build(BuildContext context) {
     ),
     2: const ProfileScreen(),//профиль, заглушка
     3: SettingsScreen(//настройки
-      onThemeChanged: widget.onThemeChanged,
+      themeService: widget.themeService,
       notificationsEnabled: _notificationsEnabled,
       onNotificationsChanged: (val) =>
           setState(() => _notificationsEnabled = val),

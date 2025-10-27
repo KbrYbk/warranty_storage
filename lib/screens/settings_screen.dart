@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
+import '../services/theme_service.dart';
 
 class SettingsScreen extends StatefulWidget {
-  final void Function(ThemeMode) onThemeChanged;
+  final ThemeService themeService;
   final bool notificationsEnabled;
   final void Function(bool) onNotificationsChanged;
 
   const SettingsScreen({
     super.key,
-    required this.onThemeChanged,
+    required this.themeService,
     required this.notificationsEnabled,
     required this.onNotificationsChanged,
   });
@@ -18,84 +19,110 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   late bool _notifications;
-  late ThemeMode _currentTheme;
 
   @override
   void initState() {
     super.initState();
     _notifications = widget.notificationsEnabled;
-    _currentTheme = ThemeMode.system; // Можно загружать из main через widget
   }
 
   void _showThemeDialog() {
+    final currentTheme = widget.themeService.themeMode.value;
+
     showDialog(
       context: context,
       builder: (context) {
-        return AlertDialog(
+        return SimpleDialog(
           title: const Text("Выберите тему"),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ListTile(
-                title: const Text("Системная"),
-                onTap: () {
-                  setState(() => _currentTheme = ThemeMode.system);
-                  widget.onThemeChanged(ThemeMode.system);
-                  Navigator.pop(context);
-                },
-              ),
-              ListTile(
-                title: const Text("Светлая"),
-                onTap: () {
-                  setState(() => _currentTheme = ThemeMode.light);
-                  widget.onThemeChanged(ThemeMode.light);
-                  Navigator.pop(context);
-                },
-              ),
-              ListTile(
-                title: const Text("Тёмная"),
-                onTap: () {
-                  setState(() => _currentTheme = ThemeMode.dark);
-                  widget.onThemeChanged(ThemeMode.dark);
-                  Navigator.pop(context);
-                },
-              ),
-            ],
-          ),
+          children: [
+            _themeOption("Системная", ThemeMode.system, currentTheme),
+            _themeOption("Светлая", ThemeMode.light, currentTheme),
+            _themeOption("Тёмная", ThemeMode.dark, currentTheme),
+          ],
         );
       },
     );
   }
 
-  String get _themeText {
-    switch (_currentTheme) {
-      case ThemeMode.light:
-        return "Светлая";
-      case ThemeMode.dark:
-        return "Тёмная";
-      default:
-        return "Системная";
-    }
+  Widget _themeOption(String title, ThemeMode mode, ThemeMode current) {
+    return RadioListTile<ThemeMode>(
+      title: Text(title),
+      value: mode,
+      groupValue: current,
+      onChanged: (val) {
+        if (val != null) {
+          widget.themeService.setTheme(val);
+          Navigator.pop(context);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text("Тема изменена: $title")),
+          );
+        }
+      },
+    );
+  }
+
+  void _onNotificationsChanged(bool val) {
+    setState(() => _notifications = val);
+    widget.onNotificationsChanged(val);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(val
+            ? "Уведомления включены"
+            : "Уведомления выключены"),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
+    final themeMode = widget.themeService.themeMode.value;
+
+    String themeText;
+    switch (themeMode) {
+      case ThemeMode.light:
+        themeText = "Светлая";
+        break;
+      case ThemeMode.dark:
+        themeText = "Тёмная";
+        break;
+      default:
+        themeText = "Системная";
+    }
+
     return Scaffold(
       body: ListView(
         children: [
           ListTile(
+            leading: const Icon(Icons.color_lens_outlined),
             title: const Text("Тема"),
-            subtitle: Text("Текущая тема: $_themeText"),
-            trailing: const Icon(Icons.color_lens_outlined),
+            subtitle: Text("Текущая тема: $themeText"),
+            trailing: const Icon(Icons.chevron_right),
             onTap: _showThemeDialog,
           ),
+          const Divider(),
           SwitchListTile(
-            title: const Text("Уведомления"),
-            subtitle: const Text("Включить или отключить уведомления"),
+            secondary: const Icon(Icons.notifications_outlined),
+            title: const Text("Пуш-уведомления"),
+            subtitle: const Text("Разрешить или запретить уведомления"),
             value: _notifications,
-            onChanged: (val) {
-              setState(() => _notifications = val);
-              widget.onNotificationsChanged(val);
+            onChanged: _onNotificationsChanged,
+          ),
+          const Divider(),
+          ListTile(
+            leading: const Icon(Icons.info_outline),
+            title: const Text("О приложении"),
+            subtitle: const Text("Версия 1.0 — Warranty Storage"),
+            onTap: () {
+              showAboutDialog(
+                context: context,
+                applicationName: "Warranty Storage",
+                applicationVersion: "1.0",
+                children: const [
+                  Text(
+                    "Приложение для хранения гарантийных чеков локально на устройстве.",
+                  ),
+                ],
+              );
             },
           ),
         ],
