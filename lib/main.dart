@@ -73,11 +73,11 @@ class _WarrantyAppState extends State<WarrantyApp> {
         // Если есть системные цвета (Android 12+) → используем
         // Иначе → seedColor (fallback для старых Android)
         final lightScheme =
-            lightDynamic ?? ColorScheme.fromSeed(seedColor: Colors.red);
+            lightDynamic ?? ColorScheme.fromSeed(seedColor: const Color(0xFF2079DF));
         final darkScheme =
             darkDynamic ??
             ColorScheme.fromSeed(
-              seedColor: Colors.red,
+              seedColor: const Color(0xFF2079DF),
               brightness: Brightness.dark,
             );
         // Подписываемся на ValueNotifier — MaterialApp будет менять themeMode автоматически
