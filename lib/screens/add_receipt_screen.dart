@@ -1,10 +1,10 @@
 import 'dart:io';
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 import 'package:warranty_storage/models/receipt.dart';
 import 'package:warranty_storage/screens/qr_scanner_screen.dart';
+import 'package:warranty_storage/services/receipt_api_service.dart';
 
 class AddReceiptScreen extends StatefulWidget {
   const AddReceiptScreen({super.key});
@@ -14,10 +14,8 @@ class AddReceiptScreen extends StatefulWidget {
 }
 
 class _AddReceiptScreenState extends State<AddReceiptScreen> {
-  //  Ключ формы для валидации
   final _formKey = GlobalKey<FormState>();
 
-  //  Контроллеры текстовых полей
   final _titleController = TextEditingController();
   final _dateController = TextEditingController();
   final _warrantyController = TextEditingController();
@@ -26,284 +24,298 @@ class _AddReceiptScreenState extends State<AddReceiptScreen> {
   final _categoryController = TextEditingController();
   final _commentController = TextEditingController();
 
-  //  Работа с изображениями
   XFile? _receiptImage;
   final ImagePicker _picker = ImagePicker();
 
-  //  Даты покупки и гарантии
   DateTime? _purchaseDate;
   DateTime? _warrantyDate;
 
-  //  Состояние FAB меню (открыто/закрыто)
-  bool _fabMenuOpen = false;
+  DateTime? _tempPurchaseDate;
+  DateTime? _tempWarrantyDate;
 
-  // Выбор изображения из камеры или галереи
-  Future<void> _pickImage(ImageSource source) async {
-    final XFile? image = await _picker.pickImage(
-      source: source,
-      imageQuality: 80,
+  bool _fabMenuOpen = false;
+  bool _isLoading = false;
+
+  void _showCustomDatePicker({required bool isPurchaseDate}) {
+    final initialDate = isPurchaseDate
+        ? (_purchaseDate ?? DateTime.now())
+        : (_warrantyDate ?? _purchaseDate ?? DateTime.now());
+
+    _tempPurchaseDate = _purchaseDate;
+    _tempWarrantyDate = _warrantyDate;
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text(isPurchaseDate ? "Дата покупки" : "Гарантия до"),
+        content: SizedBox(
+          width: 340,
+          height: 400,
+          child: Theme(
+            data: Theme.of(context).copyWith(
+              textTheme: const TextTheme(
+                bodyMedium: TextStyle(fontSize: 16),
+              ),
+            ),
+            child: CalendarDatePicker(
+              initialDate: initialDate,
+              firstDate: DateTime(2010),
+              lastDate: DateTime(2035),
+              onDateChanged: (date) {
+                setState(() {
+                  if (isPurchaseDate) {
+                    _tempPurchaseDate = date;
+                  } else {
+                    _tempWarrantyDate = date;
+                  }
+                });
+              },
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text("Отмена")),
+          ElevatedButton(
+            onPressed: () {
+              setState(() {
+                if (isPurchaseDate) {
+                  _purchaseDate = _tempPurchaseDate;
+                  _dateController.text = _purchaseDate != null
+                      ? DateFormat('dd.MM.yyyy').format(_purchaseDate!)
+                      : "";
+                } else {
+                  _warrantyDate = _tempWarrantyDate;
+                  _warrantyController.text = _warrantyDate != null
+                      ? DateFormat('dd.MM.yyyy').format(_warrantyDate!)
+                      : "";
+                }
+              });
+              Navigator.pop(context);
+            },
+            child: const Text("Выбрать"),
+          ),
+        ],
+      ),
     );
-    if (image != null) {
-      setState(() => _receiptImage = image);
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Изображение выбрано')));
-    }
   }
 
-  //  Сканирование QR-кода (автоматическое заполнение даты и суммы)
-  Future<void> _scanQR() async {
-    final result = await Navigator.push(
+  Future<void> _scanAndFillFromFns() async {
+    final qr = await Navigator.push<String>(
       context,
       MaterialPageRoute(builder: (_) => const QRScannerScreen()),
     );
+    if (qr == null || !mounted) return;
 
-    if (result != null && result is String) {
-      try {
-        final qrData = Uri.splitQueryString(result, encoding: utf8);
+    setState(() => _isLoading = true);
+    final data = await ReceiptApiService.fetchFromQrString(qr);
+    if (mounted) setState(() => _isLoading = false);
 
-        final rawDate = qrData["t"];
-        final rawSum = qrData["s"];
-
-        if (rawDate != null) {
-          final parsedDate = DateTime.parse(rawDate.replaceFirst("T", ""));
-          _dateController.text = DateFormat('dd.MM.yyyy').format(parsedDate);
-          _purchaseDate = parsedDate;
-        }
-
-        if (rawSum != null) _priceController.text = rawSum;
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("QR-код успешно отсканирован")),
-        );
-      } catch (_) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Не удалось распознать QR-код")),
-        );
+    if (data != null) {
+      if (data['purchaseDate'] != null) {
+        _purchaseDate = data['purchaseDate'];
+        _dateController.text = DateFormat('dd.MM.yyyy').format(_purchaseDate!);
       }
+      if (data['amount'] != null) _priceController.text = data['amount'];
+      if (data['store'] != null) _storeController.text = data['store'];
+      if (data['title'] != null && data['title'] != 'Покупка') {
+        _titleController.text = data['title'];
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Row(children: [Icon(Icons.check_circle, color: Colors.white), SizedBox(width: 12), Text("Чек загружен!")]),
+          backgroundColor: Colors.green,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Чек не найден"), backgroundColor: Colors.red),
+      );
     }
   }
 
-  //  Выбор даты с помощью календаря
-  Future<void> _pickDate(TextEditingController controller, DateTime? initialDate, void Function(DateTime) onPicked) async {
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: initialDate ?? DateTime.now(),
-      firstDate: DateTime(2000),
-      lastDate: DateTime(2100),
-    );
-    if (picked != null) {
-      controller.text = DateFormat('dd.MM.yyyy').format(picked); // для UI
-      onPicked(picked); // сохраняем как DateTime
+  Future<void> _pickImage(ImageSource source) async {
+    final image = await _picker.pickImage(source: source, imageQuality: 85);
+    if (image != null && mounted) {
+      setState(() => _receiptImage = image);
     }
   }
 
-  //  Сохранение чека (возвращаем объект Receipt в HomeScreen)
   void _saveReceipt() {
     if (_formKey.currentState!.validate()) {
-      final newReceipt = Receipt(
-        title: _titleController.text,
-        date: _purchaseDate!,
-        warrantyEnd: _warrantyDate!,
+      final receipt = Receipt(
+        title: _titleController.text.trim().isEmpty ? "Без названия" : _titleController.text.trim(),
+        date: _purchaseDate ?? DateTime.now(),
+        warrantyEnd: _warrantyDate ?? _purchaseDate ?? DateTime.now().add(const Duration(days: 365)),
         price: _priceController.text,
         store: _storeController.text,
         category: _categoryController.text,
         comment: _commentController.text,
         imagePath: _receiptImage?.path ?? "",
       );
-
-      Navigator.pop(context, newReceipt);
-
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Чек успешно сохранён!')));
+      Navigator.pop(context, receipt);
     }
   }
 
-  //  Основной UI экрана
+  @override
+  void initState() {
+    super.initState();
+    Intl.defaultLocale = 'ru';
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Добавить чек"), centerTitle: true),
-
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            children: [
-              // Название устройства
-              TextFormField(
-                controller: _titleController,
-                decoration: const InputDecoration(
-                  labelText: "Название устройства",
-                  filled: true,
-                ),
-                validator: (val) =>
-                    val == null || val.isEmpty ? "Введите название" : null,
-              ),
-              const SizedBox(height: 12),
-
-              // Даты покупки и окончания гарантии
-              Row(
-                children: [
-                  Expanded(
-                    child: TextFormField(
-                      controller: _dateController,
-                      readOnly: true,
-                      decoration: const InputDecoration(
-                        labelText: "Дата покупки",
-                        filled: true,
-                      ),
-                      onTap: () => _pickDate(
-                        _dateController,
-                        _purchaseDate,
-                        (picked) => _purchaseDate = picked,
-                      ),
-                      validator: (val) =>
-                          val == null || val.isEmpty ? "Выберите дату" : null,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: TextFormField(
-                      controller: _warrantyController,
-                      readOnly: true,
-                      decoration: const InputDecoration(
-                        labelText: "Гарантия до",
-                        filled: true,
-                      ),
-                      onTap: () => _pickDate(
-                        _warrantyController,
-                        _warrantyDate ?? _purchaseDate,
-                        (picked) => _warrantyDate = picked,
-                      ),
-                      validator: (val) => val == null || val.isEmpty
-                          ? "Выберите дату окончания"
-                          : (_purchaseDate != null &&
-                                    _warrantyDate != null &&
-                                    _warrantyDate!.isBefore(_purchaseDate!)
-                                ? "Гарантия раньше покупки"
-                                : null),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              // Дополнительные поля
-              ExpansionTile(
-                title: const Text("Дополнительно"),
-                children: [
-                  TextFormField(
-                    controller: _priceController,
-                    keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(
-                      labelText: "Сумма",
-                      filled: true,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  TextFormField(
-                    controller: _storeController,
-                    decoration: const InputDecoration(
-                      labelText: "Магазин",
-                      filled: true,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  TextFormField(
-                    controller: _categoryController,
-                    decoration: const InputDecoration(
-                      labelText: "Категория",
-                      filled: true,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  TextFormField(
-                    controller: _commentController,
-                    maxLines: 3,
-                    decoration: const InputDecoration(
-                      labelText: "Комментарий",
-                      filled: true,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-
-                  if (_receiptImage != null)
-                    Image.file(File(_receiptImage!.path), height: 150),
-                ],
-              ),
-
-              const SizedBox(height: 20),
-              FilledButton.tonalIcon(
-                icon: const Icon(Icons.save),
-                label: const Text("Сохранить чек"),
-                onPressed: _saveReceipt,
-              ),
-            ],
-          ),
-        ),
+      appBar: AppBar(
+        title: const Text("Новый чек"),
+        centerTitle: true,
+        actions: [IconButton(onPressed: _saveReceipt, icon: const Icon(Icons.save))],
       ),
-      //  Простое FAB-меню для выбора действия (QR, Камера, Галерея)
-      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
-      floatingActionButton: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.end,
+      body: Stack(
         children: [
-          //  Кнопка: Фото с камеры
-          AnimatedScale(
-            scale: _fabMenuOpen ? 1 : 0,
-            duration: const Duration(milliseconds: 200),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 4),
-              child: FloatingActionButton.extended(
-                onPressed: () {
-                  _pickImage(ImageSource.camera);
-                  setState(() => _fabMenuOpen = false);
-                },
-                icon: const Icon(Icons.camera_alt),
-                label: const Text("Фото"),
+          SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
+            child: Form(
+              key: _formKey,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  TextFormField(
+                    controller: _titleController,
+                    textCapitalization: TextCapitalization.sentences,
+                    decoration: InputDecoration(
+                      labelText: "Что купили?",
+                      hintText: "iPhone 15, Холодильник...",
+                      prefixIcon: const Icon(Icons.shopping_bag_outlined),
+                      filled: true,
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
+                    ),
+                    validator: (v) => v?.trim().isEmpty == true ? "Введите название" : null,
+                  ),
+                  const SizedBox(height: 20),
+
+                  Row(
+                    children: [
+                      Expanded(
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(16),
+                          onTap: () => _showCustomDatePicker(isPurchaseDate: true),
+                          child: InputDecorator(
+                            decoration: InputDecoration(
+                              labelText: "Дата покупки",
+                              prefixIcon: const Icon(Icons.calendar_today),
+                              filled: true,
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
+                            ),
+                            child: Text(
+                              _purchaseDate != null
+                                  ? DateFormat('dd.MM.yyyy').format(_purchaseDate!)
+                                  : "Выберите",
+                              style: TextStyle(color: _purchaseDate != null ? null : Colors.grey[600]),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(16),
+                          onTap: () => _showCustomDatePicker(isPurchaseDate: false),
+                          child: InputDecorator(
+                            decoration: InputDecoration(
+                              labelText: "Гарантия до",
+                              prefixIcon: const Icon(Icons.verified),
+                              filled: true,
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
+                            ),
+                            child: Text(
+                              _warrantyDate != null
+                                  ? DateFormat('dd.MM.yyyy').format(_warrantyDate!)
+                                  : "Выберите",
+                              style: TextStyle(color: _warrantyDate != null ? null : Colors.grey[600]),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+
+                  Card(
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    child: ExpansionTile(
+                      title: const Text("Дополнительно", style: TextStyle(fontWeight: FontWeight.w600)),
+                      childrenPadding: const EdgeInsets.all(16),
+                      children: [
+                        TextFormField(controller: _priceController, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: "Сумма", prefixIcon: Icon(Icons.price_check), filled: true)),
+                        const SizedBox(height: 12),
+                        TextFormField(controller: _storeController, decoration: const InputDecoration(labelText: "Магазин", prefixIcon: Icon(Icons.store), filled: true)),
+                        const SizedBox(height: 12),
+                        TextFormField(controller: _categoryController, decoration: const InputDecoration(labelText: "Категория", prefixIcon: Icon(Icons.category), filled: true)),
+                        const SizedBox(height: 12),
+                        TextFormField(controller: _commentController, maxLines: 3, decoration: const InputDecoration(labelText: "Комментарий", prefixIcon: Icon(Icons.note), filled: true)),
+                        const SizedBox(height: 16),
+                        if (_receiptImage != null)
+                          ClipRRect(borderRadius: BorderRadius.circular(12), child: Image.file(File(_receiptImage!.path), height: 180, fit: BoxFit.cover)),
+                      ],
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
-          //  Кнопка: Выбор из галереи
-          AnimatedScale(
-            scale: _fabMenuOpen ? 1 : 0,
-            duration: const Duration(milliseconds: 200),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 4),
+
+          if (_isLoading)
+            Container(color: Colors.black54, child: const Center(child: CircularProgressIndicator(color: Colors.white))),
+        ],
+      ),
+
+      // FAB — РОВНО ПО ПРАВОМУ КРАЮ
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+      floatingActionButton: Padding(
+        padding: const EdgeInsets.only(right: 8),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            AnimatedScale(
+              scale: _fabMenuOpen ? 1 : 0,
+              duration: const Duration(milliseconds: 220),
               child: FloatingActionButton.extended(
-                onPressed: () {
-                  _pickImage(ImageSource.gallery);
-                  setState(() => _fabMenuOpen = false);
-                },
+                backgroundColor: Colors.green,
+                onPressed: _scanAndFillFromFns,
+                icon: const Icon(Icons.qr_code_scanner),
+                label: const Text("QR из ФНС"),
+              ),
+            ),
+            const SizedBox(height: 8),
+            AnimatedScale(
+              scale: _fabMenuOpen ? 1 : 0,
+              duration: const Duration(milliseconds: 220),
+              child: FloatingActionButton.extended(
+                onPressed: () => _pickImage(ImageSource.camera),
+                icon: const Icon(Icons.camera_alt),
+                label: const Text("Камера"),
+              ),
+            ),
+            const SizedBox(height: 8),
+            AnimatedScale(
+              scale: _fabMenuOpen ? 1 : 0,
+              duration: const Duration(milliseconds: 220),
+              child: FloatingActionButton.extended(
+                onPressed: () => _pickImage(ImageSource.gallery),
                 icon: const Icon(Icons.photo_library),
                 label: const Text("Галерея"),
               ),
             ),
-          ),
-          //  Кнопка: Сканирование QR
-          AnimatedScale(
-            scale: _fabMenuOpen ? 1 : 0,
-            duration: const Duration(milliseconds: 200),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 4),
-              child: FloatingActionButton.extended(
-                onPressed: () {
-                  _scanQR();
-                  setState(() => _fabMenuOpen = false);
-                },
-                icon: const Icon(Icons.qr_code_scanner),
-                label: const Text("QR"),
-              ),
+            const SizedBox(height: 16),
+            FloatingActionButton(
+              onPressed: () => setState(() => _fabMenuOpen = !_fabMenuOpen),
+              child: Icon(_fabMenuOpen ? Icons.close : Icons.add),
             ),
-          ),
-          //  Главная кнопка (открывает/закрывает меню)
-          FloatingActionButton(
-            onPressed: () => setState(() => _fabMenuOpen = !_fabMenuOpen),
-            child: Icon(_fabMenuOpen ? Icons.close : Icons.add),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
