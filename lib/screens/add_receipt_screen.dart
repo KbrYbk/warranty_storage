@@ -18,7 +18,6 @@ class _AddReceiptScreenState extends State<AddReceiptScreen> {
 
   final _titleController = TextEditingController();
   final _dateController = TextEditingController();
-  final _warrantyController = TextEditingController();
   final _priceController = TextEditingController();
   final _storeController = TextEditingController();
   final _categoryController = TextEditingController();
@@ -30,9 +29,6 @@ class _AddReceiptScreenState extends State<AddReceiptScreen> {
   DateTime? _purchaseDate;
   DateTime? _warrantyDate;
 
-  DateTime? _tempPurchaseDate;
-  DateTime? _tempWarrantyDate;
-
   bool _fabMenuOpen = false;
   bool _isLoading = false;
 
@@ -40,9 +36,6 @@ class _AddReceiptScreenState extends State<AddReceiptScreen> {
     final initialDate = isPurchaseDate
         ? (_purchaseDate ?? DateTime.now())
         : (_warrantyDate ?? _purchaseDate ?? DateTime.now());
-
-    _tempPurchaseDate = _purchaseDate;
-    _tempWarrantyDate = _warrantyDate;
 
     showDialog(
       context: context,
@@ -54,9 +47,7 @@ class _AddReceiptScreenState extends State<AddReceiptScreen> {
           height: 400,
           child: Theme(
             data: Theme.of(context).copyWith(
-              textTheme: const TextTheme(
-                bodyMedium: TextStyle(fontSize: 16),
-              ),
+              textTheme: const TextTheme(bodyMedium: TextStyle(fontSize: 16)),
             ),
             child: CalendarDatePicker(
               initialDate: initialDate,
@@ -65,9 +56,9 @@ class _AddReceiptScreenState extends State<AddReceiptScreen> {
               onDateChanged: (date) {
                 setState(() {
                   if (isPurchaseDate) {
-                    _tempPurchaseDate = date;
+                    _purchaseDate = date;
                   } else {
-                    _tempWarrantyDate = date;
+                    _warrantyDate = date;
                   }
                 });
               },
@@ -75,24 +66,12 @@ class _AddReceiptScreenState extends State<AddReceiptScreen> {
           ),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text("Отмена")),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("Отмена"),
+          ),
           ElevatedButton(
-            onPressed: () {
-              setState(() {
-                if (isPurchaseDate) {
-                  _purchaseDate = _tempPurchaseDate;
-                  _dateController.text = _purchaseDate != null
-                      ? DateFormat('dd.MM.yyyy').format(_purchaseDate!)
-                      : "";
-                } else {
-                  _warrantyDate = _tempWarrantyDate;
-                  _warrantyController.text = _warrantyDate != null
-                      ? DateFormat('dd.MM.yyyy').format(_warrantyDate!)
-                      : "";
-                }
-              });
-              Navigator.pop(context);
-            },
+            onPressed: () => Navigator.pop(context),
             child: const Text("Выбрать"),
           ),
         ],
@@ -112,26 +91,35 @@ class _AddReceiptScreenState extends State<AddReceiptScreen> {
     if (mounted) setState(() => _isLoading = false);
 
     if (data != null) {
-      if (data['purchaseDate'] != null) {
-        _purchaseDate = data['purchaseDate'];
-        _dateController.text = DateFormat('dd.MM.yyyy').format(_purchaseDate!);
-      }
-      if (data['amount'] != null) _priceController.text = data['amount'];
-      if (data['store'] != null) _storeController.text = data['store'];
-      if (data['title'] != null && data['title'] != 'Покупка') {
-        _titleController.text = data['title'];
-      }
-
+      setState(() {
+        if (data['purchaseDate'] != null) {
+          _purchaseDate = data['purchaseDate'];
+        }
+        if (data['amount'] != null) _priceController.text = data['amount'];
+        if (data['store'] != null) _storeController.text = data['store'];
+        if (data['title'] != null && data['title'] != 'Покупка') {
+          _titleController.text = data['title'];
+        }
+      });
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Row(children: [Icon(Icons.check_circle, color: Colors.white), SizedBox(width: 12), Text("Чек загружен!")]),
+          content: Row(
+            children: [
+              Icon(Icons.check_circle, color: Colors.white),
+              SizedBox(width: 12),
+              Text("Чек загружен!"),
+            ],
+          ),
           backgroundColor: Colors.green,
           behavior: SnackBarBehavior.floating,
         ),
       );
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Чек не найден"), backgroundColor: Colors.red),
+        const SnackBar(
+          content: Text("Чек не найден"),
+          backgroundColor: Colors.red,
+        ),
       );
     }
   }
@@ -146,9 +134,13 @@ class _AddReceiptScreenState extends State<AddReceiptScreen> {
   void _saveReceipt() {
     if (_formKey.currentState!.validate()) {
       final receipt = Receipt(
-        title: _titleController.text.trim().isEmpty ? "Без названия" : _titleController.text.trim(),
+        title: _titleController.text.trim().isEmpty
+            ? "Без названия"
+            : _titleController.text.trim(),
         date: _purchaseDate ?? DateTime.now(),
-        warrantyEnd: _warrantyDate ?? _purchaseDate ?? DateTime.now().add(const Duration(days: 365)),
+        warrantyEnd:
+            _warrantyDate ??
+            (_purchaseDate ?? DateTime.now()).add(const Duration(days: 365)),
         price: _priceController.text,
         store: _storeController.text,
         category: _categoryController.text,
@@ -160,18 +152,14 @@ class _AddReceiptScreenState extends State<AddReceiptScreen> {
   }
 
   @override
-  void initState() {
-    super.initState();
-    Intl.defaultLocale = 'ru';
-  }
-
-  @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text("Новый чек"),
         centerTitle: true,
-        actions: [IconButton(onPressed: _saveReceipt, icon: const Icon(Icons.save))],
+        actions: [
+          IconButton(onPressed: _saveReceipt, icon: const Icon(Icons.save)),
+        ],
       ),
       body: Stack(
         children: [
@@ -190,9 +178,12 @@ class _AddReceiptScreenState extends State<AddReceiptScreen> {
                       hintText: "iPhone 15, Холодильник...",
                       prefixIcon: const Icon(Icons.shopping_bag_outlined),
                       filled: true,
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
                     ),
-                    validator: (v) => v?.trim().isEmpty == true ? "Введите название" : null,
+                    validator: (v) =>
+                        v?.trim().isEmpty == true ? "Введите название" : null,
                   ),
                   const SizedBox(height: 20),
 
@@ -201,19 +192,28 @@ class _AddReceiptScreenState extends State<AddReceiptScreen> {
                       Expanded(
                         child: InkWell(
                           borderRadius: BorderRadius.circular(16),
-                          onTap: () => _showCustomDatePicker(isPurchaseDate: true),
+                          onTap: () =>
+                              _showCustomDatePicker(isPurchaseDate: true),
                           child: InputDecorator(
                             decoration: InputDecoration(
                               labelText: "Дата покупки",
                               prefixIcon: const Icon(Icons.calendar_today),
                               filled: true,
-                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(16),
+                              ),
                             ),
                             child: Text(
                               _purchaseDate != null
-                                  ? DateFormat('dd.MM.yyyy').format(_purchaseDate!)
+                                  ? DateFormat(
+                                      'dd.MM.yyyy',
+                                    ).format(_purchaseDate!)
                                   : "Выберите",
-                              style: TextStyle(color: _purchaseDate != null ? null : Colors.grey[600]),
+                              style: TextStyle(
+                                color: _purchaseDate != null
+                                    ? null
+                                    : Colors.grey[600],
+                              ),
                             ),
                           ),
                         ),
@@ -222,19 +222,28 @@ class _AddReceiptScreenState extends State<AddReceiptScreen> {
                       Expanded(
                         child: InkWell(
                           borderRadius: BorderRadius.circular(16),
-                          onTap: () => _showCustomDatePicker(isPurchaseDate: false),
+                          onTap: () =>
+                              _showCustomDatePicker(isPurchaseDate: false),
                           child: InputDecorator(
                             decoration: InputDecoration(
                               labelText: "Гарантия до",
                               prefixIcon: const Icon(Icons.verified),
                               filled: true,
-                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(16),
+                              ),
                             ),
                             child: Text(
                               _warrantyDate != null
-                                  ? DateFormat('dd.MM.yyyy').format(_warrantyDate!)
+                                  ? DateFormat(
+                                      'dd.MM.yyyy',
+                                    ).format(_warrantyDate!)
                                   : "Выберите",
-                              style: TextStyle(color: _warrantyDate != null ? null : Colors.grey[600]),
+                              style: TextStyle(
+                                color: _warrantyDate != null
+                                    ? null
+                                    : Colors.grey[600],
+                              ),
                             ),
                           ),
                         ),
@@ -244,21 +253,63 @@ class _AddReceiptScreenState extends State<AddReceiptScreen> {
                   const SizedBox(height: 20),
 
                   Card(
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
                     child: ExpansionTile(
-                      title: const Text("Дополнительно", style: TextStyle(fontWeight: FontWeight.w600)),
+                      title: const Text(
+                        "Дополнительно",
+                        style: TextStyle(fontWeight: FontWeight.w600),
+                      ),
                       childrenPadding: const EdgeInsets.all(16),
                       children: [
-                        TextFormField(controller: _priceController, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: "Сумма", prefixIcon: Icon(Icons.price_check), filled: true)),
+                        TextFormField(
+                          controller: _priceController,
+                          keyboardType: TextInputType.number,
+                          decoration: const InputDecoration(
+                            labelText: "Сумма",
+                            prefixIcon: Icon(Icons.price_check),
+                            filled: true,
+                          ),
+                        ),
                         const SizedBox(height: 12),
-                        TextFormField(controller: _storeController, decoration: const InputDecoration(labelText: "Магазин", prefixIcon: Icon(Icons.store), filled: true)),
+                        TextFormField(
+                          controller: _storeController,
+                          decoration: const InputDecoration(
+                            labelText: "Магазин",
+                            prefixIcon: Icon(Icons.store),
+                            filled: true,
+                          ),
+                        ),
                         const SizedBox(height: 12),
-                        TextFormField(controller: _categoryController, decoration: const InputDecoration(labelText: "Категория", prefixIcon: Icon(Icons.category), filled: true)),
+                        TextFormField(
+                          controller: _categoryController,
+                          decoration: const InputDecoration(
+                            labelText: "Категория",
+                            prefixIcon: Icon(Icons.category),
+                            filled: true,
+                          ),
+                        ),
                         const SizedBox(height: 12),
-                        TextFormField(controller: _commentController, maxLines: 3, decoration: const InputDecoration(labelText: "Комментарий", prefixIcon: Icon(Icons.note), filled: true)),
+                        TextFormField(
+                          controller: _commentController,
+                          maxLines: 3,
+                          decoration: const InputDecoration(
+                            labelText: "Комментарий",
+                            prefixIcon: Icon(Icons.note),
+                            filled: true,
+                          ),
+                        ),
                         const SizedBox(height: 16),
                         if (_receiptImage != null)
-                          ClipRRect(borderRadius: BorderRadius.circular(12), child: Image.file(File(_receiptImage!.path), height: 180, fit: BoxFit.cover)),
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(12),
+                            child: Image.file(
+                              File(_receiptImage!.path),
+                              height: 180,
+                              fit: BoxFit.cover,
+                            ),
+                          ),
                       ],
                     ),
                   ),
@@ -268,7 +319,12 @@ class _AddReceiptScreenState extends State<AddReceiptScreen> {
           ),
 
           if (_isLoading)
-            Container(color: Colors.black54, child: const Center(child: CircularProgressIndicator(color: Colors.white))),
+            Container(
+              color: Colors.black54,
+              child: const Center(
+                child: CircularProgressIndicator(color: Colors.white),
+              ),
+            ),
         ],
       ),
 
