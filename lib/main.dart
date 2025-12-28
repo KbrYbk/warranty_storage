@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:dynamic_color/dynamic_color.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 
 import 'models/receipt.dart';
 import 'services/theme_service.dart';
@@ -15,32 +17,41 @@ import 'screens/expired_receipts_screen.dart';
 import 'screens/profile_screen.dart';
 import 'screens/settings_screen.dart';
 
+// обработчик пушей
+Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  await Firebase.initializeApp();
+  print('Фоновое уведомление: ${message.messageId}');
+  print('Тело уведомления: ${message.notification?.title} | ${message.notification?.body}');
+}
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized(); // нужно для async-кода в main
 
   // Инициализация Hive
   await Hive.initFlutter();
   Hive.registerAdapter(ReceiptAdapter());
-  await Hive.openBox<Receipt>(
-    'receipts',
-  ); // Открываем коробку (хранилище чеков)
+  await Hive.openBox<Receipt>('receipts');
   // Инициализируем ThemeService и загружаем сохранённую тему
   final themeService = ThemeService();
   await themeService.load();
+
+  await Firebase.initializeApp();
+  FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+
   // Запускаем приложение
-  runApp(WarrantyApp(themeService: themeService));
+  runApp(SafeCheckApp(themeService: themeService));
 }
 
-class WarrantyApp extends StatefulWidget {
+class SafeCheckApp extends StatefulWidget {
   final ThemeService themeService;
 
-  const WarrantyApp({super.key, required this.themeService});
+  const SafeCheckApp({super.key, required this.themeService});
 
   @override
-  State<WarrantyApp> createState() => _WarrantyAppState();
+  State<SafeCheckApp> createState() => _SafeCheckAppState();
 }
 
-class _WarrantyAppState extends State<WarrantyApp> {
+class _SafeCheckAppState extends State<SafeCheckApp> {
   late final SharedPreferences _prefs;
   bool _notificationsEnabled = true;
 
@@ -48,6 +59,16 @@ class _WarrantyAppState extends State<WarrantyApp> {
   void initState() {
     super.initState();
     _loadSettings();
+
+    // Подписка на foreground уведомления
+    FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+      print('Уведомление в foreground: ${message.notification?.title} | ${message.notification?.body}');
+    });
+
+    // Обработка кликов на уведомления
+    FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
+      print('Пользователь открыл уведомление: ${message.notification?.title}');
+    });
   }
 
   // Загружаем настройку уведомлений
@@ -64,6 +85,7 @@ class _WarrantyAppState extends State<WarrantyApp> {
     setState(() => _notificationsEnabled = enabled);
     await _prefs.setBool('notifications', enabled);
   }
+
 
   @override
   Widget build(BuildContext context) {

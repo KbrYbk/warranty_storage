@@ -1,4 +1,4 @@
-# Warranty Storage
+# SafeCheck
 
 Приложение для хранения и управления гарантийными чеками.  
 Позволяет удобно добавлять новые чеки, смотреть истёкшие гарантии и хранить данные локально или в облаке.
@@ -17,11 +17,11 @@
 
 1. Клонируем репозиторий:
 ```bash
-git clone git@github.com:KbrYbk/warranty_storage.git 
+git clone git@github.com:KbrYbk/safecheck.git 
 ```
 2. Переходим в папку проекта:
 ```bash
-cd warranty_storage
+cd safecheck
 ```
 3. Устанавливаем зависимости:
 ```bash

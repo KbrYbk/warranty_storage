@@ -7,7 +7,6 @@ import 'package:safecheck/screens/profile_screen.dart';
 import 'package:safecheck/screens/receipt_details_screen.dart';
 import 'package:safecheck/screens/settings_screen.dart';
 import '../services/theme_service.dart';
-import 'services/theme_service.dart';
 import 'package:intl/intl.dart';
 
 class HomeScreen extends StatefulWidget {
