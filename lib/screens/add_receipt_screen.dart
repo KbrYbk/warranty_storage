@@ -2,9 +2,9 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
-import 'package:warranty_storage/models/receipt.dart';
-import 'package:warranty_storage/screens/qr_scanner_screen.dart';
-import 'package:warranty_storage/services/receipt_api_service.dart';
+import 'package:safecheck/models/receipt.dart';
+import 'package:safecheck/screens/qr_scanner_screen.dart';
+import 'package:safecheck/services/receipt_api_service.dart';
 
 class AddReceiptScreen extends StatefulWidget {
   const AddReceiptScreen({super.key});

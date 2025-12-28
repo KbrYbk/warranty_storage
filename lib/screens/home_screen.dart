@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
-import 'package:warranty_storage/models/receipt.dart';
-import 'package:warranty_storage/screens/add_receipt_screen.dart';
-import 'package:warranty_storage/screens/expired_receipts_screen.dart';
-import 'package:warranty_storage/screens/profile_screen.dart';
-import 'package:warranty_storage/screens/receipt_details_screen.dart';
-import 'package:warranty_storage/screens/settings_screen.dart';
+import 'package:safecheck/models/receipt.dart';
+import 'package:safecheck/screens/add_receipt_screen.dart';
+import 'package:safecheck/screens/expired_receipts_screen.dart';
+import 'package:safecheck/screens/profile_screen.dart';
+import 'package:safecheck/screens/receipt_details_screen.dart';
+import 'package:safecheck/screens/settings_screen.dart';
 import '../services/theme_service.dart';
 import 'services/theme_service.dart';
 import 'package:intl/intl.dart';

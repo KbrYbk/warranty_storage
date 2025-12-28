@@ -1,7 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:warranty_storage/models/receipt.dart';
-import 'package:warranty_storage/screens/receipt_details_screen.dart';
+import 'package:safecheck/models/receipt.dart';
+import 'package:safecheck/screens/receipt_details_screen.dart';
 import 'package:intl/intl.dart';
 
 

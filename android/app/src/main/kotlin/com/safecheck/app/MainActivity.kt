@@ -1,4 +1,4 @@
-package com.example.warranty_storage
+package com.safecheck.app
 
 import io.flutter.embedding.android.FlutterActivity
 
